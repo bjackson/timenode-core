@@ -1,4 +1,4 @@
-import { TransactionReceipt } from 'web3/types';
+import { TransactionReceipt } from 'web3-core';
 import { Util } from '@ethereum-alarm-clock/lib';
 
 const POLL_INTERVAL = 3000;

@@ -1,9 +1,9 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { Operation } from '../Types/Operation';
 
 export interface ITxPoolTxDetails {
   to: string;
-  gasPrice: BigNumber;
+  gasPrice: BN;
   timestamp: number;
   operation: Operation;
 }

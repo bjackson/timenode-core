@@ -1,5 +1,5 @@
 import { Bucket } from './IBucketPair';
-import { Block } from 'web3/eth/types';
+import { Block } from 'web3-eth';
 import { Util, Constants, RequestFactory } from '@ethereum-alarm-clock/lib';
 
 export interface IBucketCalc {
@@ -28,13 +28,13 @@ export class BucketCalc {
   private async getCurrentBuckets(latest: Block): Promise<Bucket[]> {
     return [
       (await this.requestFactory).calcBucket(latest.number, 1),
-      (await this.requestFactory).calcBucket(latest.timestamp, 2)
+      (await this.requestFactory).calcBucket(latest.timestamp as number, 2)
     ];
   }
 
   private async getNextBuckets(latest: Block): Promise<Bucket[]> {
     const nextBlockInterval = latest.number + Constants.BUCKET_SIZE.block;
-    const nextTsInterval = latest.timestamp + Constants.BUCKET_SIZE.timestamp;
+    const nextTsInterval = (latest.timestamp as number) + Constants.BUCKET_SIZE.timestamp;
 
     return [
       (await this.requestFactory).calcBucket(nextBlockInterval, 1),
@@ -44,7 +44,7 @@ export class BucketCalc {
 
   private async getAfterNextBuckets(latest: Block): Promise<Bucket[]> {
     const nextBlockInterval = latest.number + 2 * Constants.BUCKET_SIZE.block;
-    const nextTsInterval = latest.timestamp + 2 * Constants.BUCKET_SIZE.timestamp;
+    const nextTsInterval = (latest.timestamp as number) + 2 * Constants.BUCKET_SIZE.timestamp;
 
     return [
       (await this.requestFactory).calcBucket(nextBlockInterval, 1),

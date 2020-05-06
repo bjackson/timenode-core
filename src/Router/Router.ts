@@ -71,13 +71,14 @@ export default class Router implements IRouter {
       return TxStatus.ClaimWindow;
     }
 
-    if (!(await txRequest.inClaimWindow()) || txRequest.isClaimed) {
+    const inClaimWindow = await txRequest.inClaimWindow();
+    if (!inClaimWindow || txRequest.isClaimed) {
       this.cache.get(txRequest.address).claimedBy = txRequest.claimedBy;
       return TxStatus.FreezePeriod;
     }
 
     if (this.isClaimingEnabled) {
-      const nextAccount: Address = this.wallet.nextAccount.getAddressString();
+      const nextAccount: Address = this.wallet.nextAccount.address;
       const fastestGas = (await this.gasPriceUtil.getAdvancedNetworkGasPrice()).fastest;
       const shouldClaimStatus: EconomicStrategyStatus = await this.economicStrategyManager.shouldClaimTx(
         txRequest,
@@ -103,7 +104,7 @@ export default class Router implements IRouter {
           }
         } catch (err) {
           this.logger.error(err, txRequest.address);
-          throw new Error(err);
+          throw err;
         }
       } else {
         this.logger.info(`Claiming: Skipped - ${shouldClaimStatus}`, txRequest.address);
@@ -193,7 +194,7 @@ export default class Router implements IRouter {
 
   public async isTransactionMissed(txRequest: ITransactionRequest): Promise<boolean> {
     const now = await txRequest.now();
-    const afterExecutionWindow = txRequest.executionWindowEnd.isLessThanOrEqualTo(now);
+    const afterExecutionWindow = txRequest.executionWindowEnd.lte(now);
 
     return afterExecutionWindow && !txRequest.wasCalled;
   }

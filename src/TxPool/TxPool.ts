@@ -1,8 +1,9 @@
 import { CLAIMED_EVENT, EXECUTED_EVENT } from '../Actions/Helpers';
 import { ILogger } from '../Logger';
 import TxPoolProcessor from './TxPoolProcessor';
-import Web3 = require('web3');
-import { Subscribe, Log, Callback } from 'web3/types';
+import Web3 from 'web3';
+import { Log } from 'web3-core';
+import { Subscription } from 'web3-core-subscriptions';
 import { Util } from '@ethereum-alarm-clock/lib';
 import { ITxPool, ITxPoolTxDetails } from './ITxPool';
 
@@ -16,7 +17,7 @@ export default class TxPool implements ITxPool {
   private util: Util;
   private web3: Web3;
   private txPoolProcessor: TxPoolProcessor;
-  private subs: Map<string, Subscribe<Log>> = new Map<string, Subscribe<Log>>();
+  private subs: Map<string, Subscription<Log>> = new Map<string, Subscription<Log>>();
   private cleaningTask: NodeJS.Timeout;
 
   constructor(web3: Web3, util: Util, logger: ILogger) {
@@ -56,7 +57,7 @@ export default class TxPool implements ITxPool {
     const subscription = this.subs.get(topic);
     if (subscription) {
       try {
-        await this.util.stopFilter(this.subs[topic] as Subscribe<any>);
+        await this.util.stopFilter(this.subs[topic] as Subscription<any>);
         this.subs.delete(topic);
       } catch (err) {
         this.logger.error(err);
@@ -71,12 +72,8 @@ export default class TxPool implements ITxPool {
 
   private async watchTopic(topic: string) {
     // this is the hack to unlock undocumented toBlock feature used by geth
-    const subscribe = this.web3.eth.subscribe as (
-      type: 'logs',
-      options?: any,
-      callback?: Callback<Subscribe<Log>>
-    ) => Promise<Subscribe<Log>>;
-    const subscription = await subscribe('logs', { toBlock: 'pending', topics: [topic] });
+    const subscribe = this.web3.eth.subscribe;
+    const subscription = await subscribe('logs', { fromBlock: 'pending', topics: [topic] });
 
     if (!this.subs[topic]) {
       return;
@@ -88,7 +85,7 @@ export default class TxPool implements ITxPool {
       }
     });
 
-    subscription.on('error', error => {
+    subscription.on('error', (error) => {
       this.logger.error(error.toString());
     });
 

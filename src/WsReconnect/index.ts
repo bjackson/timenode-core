@@ -1,7 +1,7 @@
 import TimeNode from '../TimeNode';
 import { ReconnectMsg } from '../Enum';
 import { EAC, Util } from '@ethereum-alarm-clock/lib';
-import Web3 = require('web3');
+import Web3 from 'web3';
 
 declare const setTimeout: any;
 
@@ -26,7 +26,6 @@ export default class WsReconnect {
 
     p.on('error', (err: any) => {
       logger.debug(`[WS ERROR] ${err}`);
-      p._timeout();
 
       setTimeout(async () => {
         const msg: ReconnectMsg = await this.handleWsDisconnect();
@@ -36,7 +35,6 @@ export default class WsReconnect {
 
     p.on('end', (err: any) => {
       logger.debug(`[WS END] Type= ${err.type} Reason= ${err.reason}`);
-      p._timeout();
 
       setTimeout(async () => {
         const msg = await this.handleWsDisconnect();

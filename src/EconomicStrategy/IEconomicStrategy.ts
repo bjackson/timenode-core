@@ -1,23 +1,23 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 export interface IEconomicStrategy {
   /**
    * Maximum deposit a TimeNode would be willing
    * to stake while claiming a transaction.
    */
-  maxDeposit?: BigNumber;
+  maxDeposit?: BN;
 
   /**
    * Minimum balance a TimeNode has to
    * have in order to claim a transaction.
    */
-  minBalance?: BigNumber;
+  minBalance?: BN;
 
   /**
    * Minimum profitability a scheduled transactions
    * has to bring in order for the TimeNode to claim it.
    */
-  minProfitability?: BigNumber;
+  minProfitability?: BN;
 
   /**
    * A number which defines the percentage with which

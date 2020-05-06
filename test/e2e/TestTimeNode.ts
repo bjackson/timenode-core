@@ -1,6 +1,6 @@
 import { EAC } from '@ethereum-alarm-clock/lib';
 import { assert, expect } from 'chai';
-import Web3 = require('web3');
+import Web3 from 'web3';
 
 import { Config, TimeNode } from '../../src';
 import { mockConfig } from '../helpers';
@@ -69,7 +69,7 @@ describe('TimeNode', () => {
 
       let allExecutionsLogged = false;
 
-      await new Promise(resolve => {
+      await new Promise((resolve) => {
         const allExecutionsLoggedCheckInterval = setInterval(async () => {
           for (const txAddress in scheduledTransactionsMap) {
             if (!scheduledTransactionsMap.hasOwnProperty(txAddress)) {

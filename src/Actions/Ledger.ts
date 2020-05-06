@@ -1,9 +1,9 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 import { IStatsDB } from '../Stats/StatsDB';
 import ITransactionOptions from '../Types/ITransactionOptions';
 import { isTransactionStatusSuccessful } from './Helpers';
-import { TransactionReceipt } from 'web3/types';
+import { TransactionReceipt } from 'web3-core';
 import { ITransactionRequest } from '@ethereum-alarm-clock/lib';
 
 export interface ILedger {
@@ -39,12 +39,12 @@ export class Ledger implements ILedger {
       return false;
     }
 
-    const gasUsed = new BigNumber(receipt.gasUsed);
-    const gasPrice = new BigNumber(opts.gasPrice);
+    const gasUsed = new BN(receipt.gasUsed);
+    const gasPrice = new BN(opts.gasPrice);
     const success = isTransactionStatusSuccessful(receipt.status);
-    let txCost = gasUsed.multipliedBy(gasPrice);
+    let txCost = gasUsed.mul(gasPrice);
     if (success) {
-      txCost = txCost.plus(txRequest.requiredDeposit);
+      txCost = txCost.add(txRequest.requiredDeposit);
     }
 
     this.statsDB.claimed(from, txRequest.address, txCost, success);
@@ -59,17 +59,17 @@ export class Ledger implements ILedger {
     from: string,
     success: boolean
   ): boolean {
-    let bounty = new BigNumber(0);
-    let cost = new BigNumber(0);
+    let bounty = new BN(0);
+    let cost = new BN(0);
 
-    const gasUsed = new BigNumber(receipt.gasUsed);
+    const gasUsed = new BN(receipt.gasUsed);
     const actualGasPrice = opts.gasPrice;
 
     if (success) {
       const data = receipt.logs[0].data;
-      bounty = new BigNumber(data.slice(0, 66)).minus(gasUsed.multipliedBy(actualGasPrice));
+      bounty = new BN(data.slice(2, 66), 16).sub(gasUsed.mul(actualGasPrice));
     } else {
-      cost = gasUsed.multipliedBy(actualGasPrice);
+      cost = gasUsed.mul(actualGasPrice);
     }
 
     this.statsDB.executed(from, txRequest.address, cost, bounty, success);

@@ -6,7 +6,7 @@ import { BucketCalc, IBucketCalc } from '../Buckets';
 import { TxStatus } from '../Enum';
 import { BucketsManager } from './BucketsManager';
 import { WatchableBucketFactory } from './WatchableBucketFactory';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { ITransactionRequestRaw, RequestFactory } from '@ethereum-alarm-clock/lib';
 
 export default class ChainScanner extends CacheScanner {
@@ -70,14 +70,14 @@ export default class ChainScanner extends CacheScanner {
   }
 
   private store(txRequest: ITransactionRequestRaw) {
-    const windowStart = new BigNumber(txRequest.params[7]);
-    const freezePeriod = new BigNumber(txRequest.params[3]);
-    const claimWindowSize = new BigNumber(txRequest.params[2]);
+    const windowStart = new BN(txRequest.params[7]);
+    const freezePeriod = new BN(txRequest.params[3]);
+    const claimWindowSize = new BN(txRequest.params[2]);
 
-    const claimWindowStart = windowStart.minus(freezePeriod).minus(claimWindowSize);
+    const claimWindowStart = windowStart.sub(freezePeriod).sub(claimWindowSize);
 
     this.config.cache.set(txRequest.address, {
-      bounty: new BigNumber(txRequest.params[1]),
+      bounty: new BN(txRequest.params[1]),
       temporalUnit: parseInt(txRequest.params[5], 10),
       claimedBy: null,
       wasCalled: false,

@@ -1,4 +1,4 @@
-import { BigNumber } from 'bignumber.js';
+import BN from 'bn.js';
 import Cache, { ICachedTxDetails } from '../Cache';
 import { EconomicStrategyStatus } from '../Enum';
 import { ILogger, DefaultLogger } from '../Logger';
@@ -14,10 +14,10 @@ export interface IEconomicStrategyManager {
   shouldClaimTx(
     txRequest: ITransactionRequest,
     nextAccount: Address,
-    gasPrice: BigNumber
+    gasPrice: BN
   ): Promise<EconomicStrategyStatus>;
-  shouldExecuteTx(txRequest: ITransactionRequest, gasPrice: BigNumber): Promise<boolean>;
-  getExecutionGasPrice(txRequest: ITransactionRequest): Promise<BigNumber>;
+  shouldExecuteTx(txRequest: ITransactionRequest, gasPrice: BN): Promise<boolean>;
+  getExecutionGasPrice(txRequest: ITransactionRequest): Promise<BN>;
 }
 
 export class EconomicStrategyManager {
@@ -64,7 +64,7 @@ export class EconomicStrategyManager {
   public async shouldClaimTx(
     txRequest: ITransactionRequest,
     nextAccount: Address,
-    gasPrice: BigNumber
+    gasPrice: BN
   ): Promise<EconomicStrategyStatus> {
     const profitable = await this.isClaimingProfitable(txRequest, gasPrice);
     if (!profitable) {
@@ -94,7 +94,7 @@ export class EconomicStrategyManager {
     return EconomicStrategyStatus.CLAIM;
   }
 
-  public async getExecutionGasPrice(txRequest: ITransactionRequest): Promise<BigNumber> {
+  public async getExecutionGasPrice(txRequest: ITransactionRequest): Promise<BN> {
     const { average } = await this.gasPriceUtil.getAdvancedNetworkGasPrice();
     const currentNetworkPrice = this.strategy.usingSmartGasEstimation
       ? (await this.smartGasEstimation(txRequest)) || average
@@ -102,18 +102,18 @@ export class EconomicStrategyManager {
 
     const minGasPrice = txRequest.gasPrice;
 
-    return currentNetworkPrice.isGreaterThan(minGasPrice) ? currentNetworkPrice : minGasPrice;
+    return currentNetworkPrice.gt(minGasPrice) ? currentNetworkPrice : minGasPrice;
   }
 
   public async shouldExecuteTx(
     txRequest: ITransactionRequest,
-    targetGasPrice: BigNumber
+    targetGasPrice: BN
   ): Promise<boolean> {
     const expectedProfit = await this.profitabilityCalculator.executionProfitability(
       txRequest,
       targetGasPrice
     );
-    const shouldExecute = expectedProfit.isGreaterThanOrEqualTo(0);
+    const shouldExecute = expectedProfit.gten(0);
 
     this.logger.debug(
       `shouldExecuteTx: expectedProfit=${expectedProfit} >= 0 returns ${shouldExecute}`,
@@ -130,7 +130,7 @@ export class EconomicStrategyManager {
 
     const minWindow = temporalUnit === 1 ? minClaimWindowBlock : minClaimWindow;
 
-    return claimWindowEnd.minus(now).lt(minWindow);
+    return claimWindowEnd.sub(now).ltn(minWindow);
   }
 
   private tooShortReserved(txRequest: ITransactionRequest): boolean {
@@ -139,7 +139,7 @@ export class EconomicStrategyManager {
 
     const minWindow = temporalUnit === 1 ? minExecutionWindowBlock : minExecutionWindow;
 
-    return minWindow && reservedWindowSize.lt(minWindow);
+    return minWindow && reservedWindowSize.ltn(minWindow);
   }
 
   private exceedsMaxDeposit(txRequest: ITransactionRequest): boolean {
@@ -161,9 +161,9 @@ export class EconomicStrategyManager {
     txRequest: ITransactionRequest
   ): Promise<boolean> {
     const minBalance = this.strategy.minBalance;
-    const currentBalance: BigNumber = await this.util.balanceOf(nextAccount);
+    const currentBalance: BN = await this.util.balanceOf(nextAccount);
     const txRequestsClaimed: string[] = this.getTxRequestsClaimedBy(nextAccount);
-    const gasPrices: BigNumber[] = await Promise.all(
+    const gasPrices: BN[] = await Promise.all(
       txRequestsClaimed.map(async (address: string) => {
         const tx = this.eac.transactionRequest(address);
         await tx.refreshData();
@@ -172,16 +172,16 @@ export class EconomicStrategyManager {
       })
     );
 
-    let costOfExecutingFutureTransactions = new BigNumber(0);
+    let costOfExecutingFutureTransactions = new BN(0);
 
     if (gasPrices.length) {
       const subsidyFactor = this.maxSubsidyFactor;
-      costOfExecutingFutureTransactions = gasPrices.reduce((sum: BigNumber, current: BigNumber) =>
-        sum.plus(current.times(subsidyFactor))
+      costOfExecutingFutureTransactions = gasPrices.reduce((sum: BN, current: BN) =>
+        sum.add(current.muln(subsidyFactor))
       );
     }
 
-    const requiredBalance = minBalance.plus(costOfExecutingFutureTransactions);
+    const requiredBalance = minBalance.add(costOfExecutingFutureTransactions);
     const isAboveMinBalanceLimit = currentBalance.gt(requiredBalance);
 
     this.logger.debug(
@@ -194,14 +194,14 @@ export class EconomicStrategyManager {
 
   private async isClaimingProfitable(
     txRequest: ITransactionRequest,
-    claimingGasPrice: BigNumber
+    claimingGasPrice: BN
   ): Promise<boolean> {
     const expectedProfit = await this.profitabilityCalculator.claimingProfitability(
       txRequest,
       claimingGasPrice
     );
     const minProfitability = this.strategy.minProfitability;
-    const isProfitable = expectedProfit.isGreaterThanOrEqualTo(minProfitability);
+    const isProfitable = expectedProfit.gte(minProfitability);
 
     this.logger.debug(
       `isClaimingProfitable:  claimingGasPrice=${claimingGasPrice} expectedProfit=${expectedProfit} >= minProfitability=${minProfitability} returns ${isProfitable}`,
@@ -216,7 +216,7 @@ export class EconomicStrategyManager {
     return maxGasSubsidy + 1;
   }
 
-  private async smartGasEstimation(txRequest: ITransactionRequest): Promise<BigNumber | null> {
+  private async smartGasEstimation(txRequest: ITransactionRequest): Promise<BN | null> {
     const gasStats = await GasPriceUtil.getEthGasStationStats();
     if (!gasStats) {
       return null;
@@ -227,10 +227,9 @@ export class EconomicStrategyManager {
     const inReservedWindow = await txRequest.inReservedWindow();
 
     const timeLeft = inReservedWindow
-      ? txRequest.reservedWindowEnd.plus(now)
-      : txRequest.executionWindowEnd.plus(now);
-    const normalizedTimeLeft =
-      temporalUnit === 1 ? timeLeft.multipliedBy(gasStats.blockTime) : timeLeft;
+      ? txRequest.reservedWindowEnd.add(now)
+      : txRequest.executionWindowEnd.add(now);
+    const normalizedTimeLeft = temporalUnit === 1 ? timeLeft.mul(gasStats.blockTime) : timeLeft;
 
     const gasEstimation = new NormalizedTimes(gasStats, temporalUnit).pickGasPrice(
       normalizedTimeLeft

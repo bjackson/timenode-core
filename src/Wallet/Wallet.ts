@@ -1,9 +1,10 @@
 // tslint:disable-next-line:no-reference
 /// <reference path="../global.d.ts" />
 import { Util } from '@ethereum-alarm-clock/lib';
-import ethTx = require('ethereumjs-tx');
-import * as ethWallet from 'ethereumjs-wallet';
-import { TransactionReceipt } from 'web3/types';
+// import ethTx = require('ethereumjs-tx');
+import { ethers, Wallet as EthWallet, utils as ethUtils } from 'ethers';
+import { TransactionRequest } from 'ethers/providers/abstract-provider';
+import { TransactionReceipt } from 'web3-core';
 
 import { TxSendStatus } from '../Enum/TxSendStatus';
 import { DefaultLogger, ILogger } from '../Logger';
@@ -14,19 +15,13 @@ import { AccountState, IAccountState, TransactionState } from './AccountState';
 import { IWalletReceipt } from './IWalletReceipt';
 import { ITransactionReceiptAwaiter, TransactionReceiptAwaiter } from './TransactionReceiptAwaiter';
 
-export interface V3Wallet {
-  privKey: any;
-  getAddressString(): string;
-  toV3(password: string, opts: object): string;
-}
-
 export class Wallet {
   public nonce: number = 0;
   public accountState: IAccountState;
 
   private CONFIRMATION_BLOCKS = 6;
   private logger: ILogger;
-  private accounts: V3Wallet[] = [];
+  private accounts: EthWallet[] = [];
   private util: Util;
   private transactionAwaiter: ITransactionReceiptAwaiter;
 
@@ -41,34 +36,36 @@ export class Wallet {
     this.transactionAwaiter = new TransactionReceiptAwaiter(util);
   }
 
-  get nextAccount(): V3Wallet {
+  get nextAccount(): EthWallet {
     return this.accounts[this.nonce % this.accounts.length];
   }
 
   public create(numAccounts: number) {
     for (let i = 0; i < numAccounts; i++) {
-      const wallet = ethWallet.generate();
+      const wallet = ethers.Wallet.createRandom();
       this.add(wallet);
     }
   }
 
-  public add(wallet: any) {
-    const address = wallet.getAddressString();
+  public add(wallet: EthWallet) {
+    const address = wallet.address;
 
-    if (!this.accounts.some(a => a.getAddressString() === address)) {
+    if (!this.accounts.some((a) => a.address === address)) {
       this.accounts.push(wallet);
     }
 
     return wallet;
   }
 
-  public encrypt(password: string, opts: object) {
-    return this.accounts.map(wallet => wallet.toV3(password, opts));
+  public async encrypt(password: string, opts: object) {
+    // return this.accounts.map(wallet => wallet.toV3(password, opts));
+
+    return Promise.all(this.accounts.map((wallet) => wallet.encrypt(password, opts)));
   }
 
   public loadPrivateKeys(privateKeys: string[]) {
-    privateKeys.forEach(privateKey => {
-      const wallet = ethWallet.fromPrivateKey(Buffer.from(privateKey, 'hex'));
+    privateKeys.forEach((privateKey) => {
+      const wallet = new EthWallet(privateKey);
 
       if (wallet) {
         this.add(wallet);
@@ -78,17 +75,18 @@ export class Wallet {
     });
   }
 
-  public decrypt(encryptedKeyStores: (string | object)[], password: string) {
-    encryptedKeyStores.forEach(keyStore => {
+  public async decrypt(encryptedKeyStores: (string | object)[], password: string) {
+    // Need to use for...of syntax here, as EthWallet.fromEncryptedJson is async.
+    for (let keyStore of encryptedKeyStores) {
       keyStore = typeof keyStore === 'object' ? JSON.stringify(keyStore) : keyStore;
-      const wallet = ethWallet.fromV3(keyStore, password, true);
+      const wallet = await EthWallet.fromEncryptedJson(keyStore, password);
 
       if (wallet) {
         this.add(wallet);
       } else {
         throw new Error("Couldn't decrypt key store. Wrong password?");
       }
-    });
+    }
   }
 
   /**
@@ -111,7 +109,7 @@ export class Wallet {
       throw new Error('Index is outside range of addresses.');
     }
 
-    const from: string = this.accounts[idx].getAddressString();
+    const from: string = this.accounts[idx].address;
 
     return this.isAccountAbleToSendTx(from);
   }
@@ -138,7 +136,7 @@ export class Wallet {
     }
 
     const account = this.accounts[idx];
-    const from: string = account.getAddressString();
+    const from: string = account.address;
     return this.sendFromAccount(from, opts);
   }
 
@@ -152,7 +150,7 @@ export class Wallet {
 
     const balance = await this.util.balanceOf(from);
 
-    if (balance.eq(0)) {
+    if (balance.eqn(0)) {
       this.logger.info(`${TxSendStatus.NOT_ENOUGH_FUNDS} ${from}`);
       return {
         from,
@@ -161,8 +159,8 @@ export class Wallet {
     }
 
     const nonce = this.util.toHex(await this.getNonce(from));
-    const v3Wallet = this.accounts.find((wallet: V3Wallet) => {
-      return wallet.getAddressString() === from;
+    const v3Wallet = this.accounts.find((wallet: EthWallet) => {
+      return wallet.address === from;
     });
     const signedTx = await this.signTransaction(v3Wallet, nonce, opts);
 
@@ -225,45 +223,49 @@ export class Wallet {
     return { receipt, from, status };
   }
 
-  public getAccounts(): V3Wallet[] {
+  public getAccounts(): EthWallet[] {
     return this.accounts;
   }
 
   public getAddresses(): string[] {
-    return this.accounts.map(account => account.getAddressString());
+    return this.accounts.map((account) => account.address);
   }
 
   public isKnownAddress(address: string): boolean {
-    return this.getAddresses().some(addr => addr === address);
+    return this.getAddresses().some((addr) => addr === address);
   }
 
-  public async sendRawTransaction(tx: ethTx): Promise<{ hash: string; error?: Error }> {
-    const serialized = '0x'.concat(tx.serialize().toString('hex'));
+  public async sendRawTransaction(tx: string): Promise<{ hash: string; error?: Error }> {
+    // const serialized = '0x'.concat(tx.serialize().toString('hex'));
 
-    const sending = this.util.sendRawTransaction(serialized);
+    const sending = this.util.sendRawTransaction(tx);
 
-    return new Promise<{ hash: string; error?: Error }>(resolve =>
+    return new Promise<{ hash: string; error?: Error }>((resolve) =>
       sending
-        .once('transactionHash', receipt => resolve({ hash: receipt }))
-        .on('error', error => resolve({ hash: tx.hash().toString('hex'), error }))
+        .once('transactionHash', (receipt) => resolve({ hash: receipt }))
+        // FIXME: Is this hash okay? Original is sha3-256.
+        .on('error', (error) => resolve({ hash: ethUtils.id(tx), error }))
     );
   }
 
-  private async signTransaction(from: V3Wallet, nonce: number | string, opts: any): Promise<ethTx> {
-    const params = {
+  private async signTransaction(
+    from: EthWallet,
+    nonce: number | string,
+    opts: any
+  ): Promise<string> {
+    const transaction: TransactionRequest = {
       nonce,
-      from: from.getAddressString(),
+      // from: from.address,
       to: opts.to,
-      gas: this.util.toHex(opts.gas),
+      gasLimit: this.util.toHex(opts.gas),
       gasPrice: this.util.toHex(opts.gasPrice),
       value: this.util.toHex(opts.value),
       data: opts.data
     };
 
-    const tx = new ethTx(params);
-    tx.sign(Buffer.from(from.privKey, 'hex'));
+    const signedTransaction = from.sign(transaction);
 
-    return tx;
+    return signedTransaction;
   }
 
   private isTransactionStatusSuccessful(receipt: TransactionReceipt): boolean {

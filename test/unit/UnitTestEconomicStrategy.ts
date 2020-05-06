@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { assert } from 'chai';
 import * as TypeMoq from 'typemoq';
 import { Config } from '../../src';
@@ -14,17 +14,17 @@ import {
 
 // tslint:disable-next-line:no-big-function
 describe('Economic Strategy Tests', () => {
-  const MWei = new BigNumber(1000000);
+  const MWei = new BN(1000000);
 
   const account = '0x123456';
   const defaultBalance = MWei;
-  const defaultBounty = MWei.times(1000);
-  const defaultGasPrice = new BigNumber(1000);
+  const defaultBounty = MWei.muln(1000);
+  const defaultGasPrice = new BN(1000);
   const CLAIMING_GAS_ESTIMATE = 100000;
 
-  const defaultClaimingCost = defaultGasPrice.multipliedBy(CLAIMING_GAS_ESTIMATE);
-  const defaultPaymentModifier = new BigNumber(10); //10%
-  const defaultZeroProfitabilityBounty = defaultClaimingCost.times(100).div(defaultPaymentModifier);
+  const defaultClaimingCost = defaultGasPrice.muln(CLAIMING_GAS_ESTIMATE);
+  const defaultPaymentModifier = new BN(10); //10%
+  const defaultZeroProfitabilityBounty = defaultClaimingCost.muln(100).div(defaultPaymentModifier);
 
   const createTxRequest = (
     gasPrice = defaultGasPrice,
@@ -32,32 +32,32 @@ describe('Economic Strategy Tests', () => {
     claimedBy = account,
     paymentModifier = defaultPaymentModifier,
     temporalUnit = 1,
-    reservedWindowSize = new BigNumber(3600),
-    claimWindowEnd = new BigNumber(123155)
+    reservedWindowSize = new BN(3600),
+    claimWindowEnd = new BN(123155)
   ) => {
     const txRequest = TypeMoq.Mock.ofType<ITransactionRequest>();
-    txRequest.setup(tx => tx.gasPrice).returns(() => gasPrice);
-    txRequest.setup(tx => tx.now()).returns(() => Promise.resolve(new BigNumber(123123)));
-    txRequest.setup(tx => tx.reservedWindowEnd).returns(() => new BigNumber(23423));
-    txRequest.setup(tx => tx.reservedWindowSize).returns(() => reservedWindowSize);
-    txRequest.setup(tx => tx.executionWindowEnd).returns(() => new BigNumber(23423));
-    txRequest.setup(tx => tx.bounty).returns(() => bounty);
-    txRequest.setup(tx => tx.requiredDeposit).returns(() => MWei);
-    txRequest.setup(tx => tx.claimPaymentModifier()).returns(async () => paymentModifier);
-    txRequest.setup(tx => tx.claimedBy).returns(() => claimedBy);
-    txRequest.setup(tx => tx.address).returns(() => '0x987654321');
-    txRequest.setup(tx => tx.temporalUnit).returns(() => temporalUnit);
-    txRequest.setup(tx => tx.claimWindowEnd).returns(() => claimWindowEnd);
+    txRequest.setup((tx) => tx.gasPrice).returns(() => gasPrice);
+    txRequest.setup((tx) => tx.now()).returns(() => Promise.resolve(new BN(123123)));
+    txRequest.setup((tx) => tx.reservedWindowEnd).returns(() => new BN(23423));
+    txRequest.setup((tx) => tx.reservedWindowSize).returns(() => reservedWindowSize);
+    txRequest.setup((tx) => tx.executionWindowEnd).returns(() => new BN(23423));
+    txRequest.setup((tx) => tx.bounty).returns(() => bounty);
+    txRequest.setup((tx) => tx.requiredDeposit).returns(() => MWei);
+    txRequest.setup((tx) => tx.claimPaymentModifier()).returns(async () => paymentModifier);
+    txRequest.setup((tx) => tx.claimedBy).returns(() => claimedBy);
+    txRequest.setup((tx) => tx.address).returns(() => '0x987654321');
+    txRequest.setup((tx) => tx.temporalUnit).returns(() => temporalUnit);
+    txRequest.setup((tx) => tx.claimWindowEnd).returns(() => claimWindowEnd);
 
     return txRequest;
   };
 
   const createGasPriceUtil = (gasPrice = defaultGasPrice) => {
     const gasPriceUtil = TypeMoq.Mock.ofType<GasPriceUtil>();
-    gasPriceUtil.setup(u => u.networkGasPrice()).returns(() => Promise.resolve(gasPrice));
-    gasPriceUtil.setup(u => u.getGasPrice()).returns(() => Promise.resolve(gasPrice));
+    gasPriceUtil.setup((u) => u.networkGasPrice()).returns(() => Promise.resolve(gasPrice));
+    gasPriceUtil.setup((u) => u.getGasPrice()).returns(() => Promise.resolve(gasPrice));
     gasPriceUtil
-      .setup(u => u.getAdvancedNetworkGasPrice())
+      .setup((u) => u.getAdvancedNetworkGasPrice())
       .returns(() =>
         Promise.resolve({
           safeLow: gasPrice,
@@ -73,8 +73,10 @@ describe('Economic Strategy Tests', () => {
   const createUtil = () => {
     const util = TypeMoq.Mock.ofType<Util>();
 
-    util.setup(u => u.balanceOf(TypeMoq.It.isAny())).returns(() => Promise.resolve(defaultBalance));
-    util.setup(u => u.calculateGasAmount(TypeMoq.It.isAny())).returns(() => MWei);
+    util
+      .setup((u) => u.balanceOf(TypeMoq.It.isAny()))
+      .returns(() => Promise.resolve(defaultBalance));
+    util.setup((u) => u.calculateGasAmount(TypeMoq.It.isAny())).returns(() => MWei);
 
     return util.object;
   };
@@ -83,11 +85,11 @@ describe('Economic Strategy Tests', () => {
   const defaultGasPriceUtil = createGasPriceUtil();
 
   const cache = TypeMoq.Mock.ofType<Cache<ICachedTxDetails>>();
-  cache.setup(c => c.stored()).returns(() => []);
+  cache.setup((c) => c.stored()).returns(() => []);
 
   const shouldClaimTx = async (
-    minProfitability: BigNumber,
-    bounty: BigNumber
+    minProfitability: BN,
+    bounty: BN
   ): Promise<EconomicStrategyStatus> => {
     const strategy = Object.assign({}, Config.DEFAULT_ECONOMIC_STRATEGY, { minProfitability });
     const economicStrategyManager = new EconomicStrategyManager(
@@ -124,7 +126,7 @@ describe('Economic Strategy Tests', () => {
 
     it('returns INSUFFICIENT_BALANCE if balance below minBalance', async () => {
       const strategy = Object.assign({}, Config.DEFAULT_ECONOMIC_STRATEGY, {
-        minBalance: defaultBalance.plus(1)
+        minBalance: defaultBalance.addn(1)
       });
       const economicStrategyManager = new EconomicStrategyManager(
         strategy,
@@ -144,11 +146,11 @@ describe('Economic Strategy Tests', () => {
     });
 
     it('returns NOT_PROFITABLE if reward lower than minProfitability', async () => {
-      const expectedProfitability = new BigNumber(1000);
-      const bounty = defaultZeroProfitabilityBounty.plus(
-        expectedProfitability.times(defaultPaymentModifier)
+      const expectedProfitability = new BN(1000);
+      const bounty = defaultZeroProfitabilityBounty.add(
+        expectedProfitability.mul(defaultPaymentModifier)
       );
-      const minProfitability = expectedProfitability.plus(1);
+      const minProfitability = expectedProfitability.addn(1);
 
       const shouldClaimStatus = await shouldClaimTx(minProfitability, bounty);
 
@@ -156,9 +158,9 @@ describe('Economic Strategy Tests', () => {
     });
 
     it('returns CLAIM if reward equals minProfitability', async () => {
-      const expectedProfitability = new BigNumber(1000);
-      const bounty = defaultZeroProfitabilityBounty.plus(
-        expectedProfitability.times(defaultPaymentModifier)
+      const expectedProfitability = new BN(1000);
+      const bounty = defaultZeroProfitabilityBounty.add(
+        expectedProfitability.mul(defaultPaymentModifier)
       );
       const minProfitability = expectedProfitability;
 
@@ -168,11 +170,11 @@ describe('Economic Strategy Tests', () => {
     });
 
     it('returns CLAIM if reward greater than minProfitability', async () => {
-      const expectedProfitability = new BigNumber(1000);
-      const bounty = defaultZeroProfitabilityBounty.plus(
-        expectedProfitability.times(defaultPaymentModifier)
+      const expectedProfitability = new BN(1000);
+      const bounty = defaultZeroProfitabilityBounty.add(
+        expectedProfitability.mul(defaultPaymentModifier)
       );
-      const minProfitability = expectedProfitability.minus(1);
+      const minProfitability = expectedProfitability.subn(1);
 
       const shouldClaimStatus = await shouldClaimTx(minProfitability, bounty);
 
@@ -197,7 +199,7 @@ describe('Economic Strategy Tests', () => {
         account,
         defaultPaymentModifier,
         2,
-        new BigNumber(100)
+        new BN(100)
       );
       const gasPrice = await defaultGasPriceUtil.getAdvancedNetworkGasPrice();
 
@@ -227,7 +229,7 @@ describe('Economic Strategy Tests', () => {
         account,
         defaultPaymentModifier,
         1,
-        new BigNumber(100)
+        new BN(100)
       );
       const gasPrice = await defaultGasPriceUtil.getAdvancedNetworkGasPrice();
 
@@ -270,7 +272,7 @@ describe('Economic Strategy Tests', () => {
     });
 
     it('returns current network price if (tx gas price + subsidy) higher than current network price', async () => {
-      const lowerGasPrice = defaultGasPrice.minus(100);
+      const lowerGasPrice = defaultGasPrice.subn(100);
       const txRequest = createTxRequest(lowerGasPrice);
       const currentNetworkPrice = await defaultGasPriceUtil.networkGasPrice();
 
@@ -291,11 +293,11 @@ describe('Economic Strategy Tests', () => {
         maxSubsidy: 1
       });
 
-      const lowerGasPrice = defaultGasPrice.div(2);
+      const lowerGasPrice = defaultGasPrice.divn(2);
       const txRequest = createTxRequest(lowerGasPrice).object;
 
-      const expectedResult = txRequest.gasPrice.plus(
-        txRequest.gasPrice.times(strategy.maxGasSubsidy / 100)
+      const expectedResult = txRequest.gasPrice.add(
+        txRequest.gasPrice.muln(strategy.maxGasSubsidy / 100)
       );
       const economicStrategyManager = new EconomicStrategyManager(
         strategy,
@@ -332,7 +334,7 @@ describe('Economic Strategy Tests', () => {
 
     it('returns false if CurrentGasCost > (Deposit + Reward + Reimbursement)', async () => {
       const txRequest = createTxRequest();
-      const gasPriceUtil = createGasPriceUtil(defaultGasPrice.times(1000));
+      const gasPriceUtil = createGasPriceUtil(defaultGasPrice.muln(1000));
 
       const economicStrategyManager = new EconomicStrategyManager(
         Config.DEFAULT_ECONOMIC_STRATEGY,

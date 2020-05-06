@@ -8,7 +8,7 @@ import {
   getAbortedExecuteStatus
 } from '../../src/Actions/Helpers';
 import { TxSendStatus } from '../../src/Enum';
-import { TransactionReceipt } from 'web3/types';
+import { TransactionReceipt } from 'web3-eth';
 
 describe('Actions Helpers Unit Tests', () => {
   describe('isExecuted()', () => {

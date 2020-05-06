@@ -9,19 +9,19 @@ import { IEconomicStrategy, EconomicStrategyManager } from '../EconomicStrategy'
 import { ILogger, DefaultLogger } from '../Logger';
 import { StatsDB } from '../Stats';
 import { ICachedTxDetails } from '../Cache/Cache';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { IEconomicStrategyManager } from '../EconomicStrategy/EconomicStrategyManager';
 import { Ledger } from '../Actions/Ledger';
 import { Pending } from '../Actions/Pending';
 import { AccountState } from '../Wallet/AccountState';
 import { TxPool, DirectTxPool, ITxPool } from '../TxPool';
-import Web3 = require('web3');
+import Web3 from 'web3';
 
 export default class Config implements IConfigParams {
   public static readonly DEFAULT_ECONOMIC_STRATEGY: IEconomicStrategy = {
-    maxDeposit: new BigNumber(1000000000000000000),
-    minBalance: new BigNumber(0),
-    minProfitability: new BigNumber(0),
+    maxDeposit: new BN('1000000000000000000'),
+    minBalance: new BN(0),
+    minProfitability: new BN(0),
     maxGasSubsidy: 100,
     minClaimWindow: 30,
     minClaimWindowBlock: 2,
@@ -52,6 +52,8 @@ export default class Config implements IConfigParams {
   public wallet: Wallet;
   public web3: Web3;
   public walletStoresAsPrivateKeys: boolean;
+  public walletStores: (object | string)[];
+  private walletPassword?: string;
   public directTxPool: boolean;
 
   // tslint:disable-next-line:cognitive-complexity
@@ -76,6 +78,7 @@ export default class Config implements IConfigParams {
     this.ms = params.ms || 4000;
     this.scanSpread = params.scanSpread || 50;
     this.walletStoresAsPrivateKeys = params.walletStoresAsPrivateKeys || false;
+    this.walletStores = params.walletStores;
     this.logger = params.logger || new DefaultLogger();
     this.txPool = this.directTxPool
       ? new DirectTxPool(this.web3, this.logger)
@@ -89,12 +92,22 @@ export default class Config implements IConfigParams {
       this.util,
       this.logger
     );
+    this.walletPassword = params.password;
     this.pending = new Pending(this.gasPriceUtil, this.txPool);
 
-    if (params.walletStores && params.walletStores.length && params.walletStores.length > 0) {
+    this.statsDb = params.statsDb ? new StatsDB(params.statsDb) : null;
+    if (this.statsDb) {
+      this.statsDbLoaded = this.statsDb.init();
+    }
+
+    this.ledger = new Ledger(this.statsDb);
+  }
+
+  async initialize() {
+    if (this.walletStores && this.walletStores.length && this.walletStores.length > 0) {
       this.wallet = new Wallet(this.util, new AccountState(), this.logger);
 
-      params.walletStores = params.walletStores.map((store: object | string) => {
+      const walletStores = this.walletStores.map((store: object | string) => {
         if (typeof store === 'object') {
           return JSON.stringify(store);
         }
@@ -103,10 +116,10 @@ export default class Config implements IConfigParams {
       });
 
       if (this.walletStoresAsPrivateKeys) {
-        this.wallet.loadPrivateKeys(params.walletStores);
+        this.wallet.loadPrivateKeys(walletStores);
       } else {
-        if (params.password) {
-          this.wallet.decrypt(params.walletStores, params.password);
+        if (this.walletPassword) {
+          await this.wallet.decrypt(this.walletStores, this.walletPassword);
         } else {
           throw new Error(
             'Unable to unlock the wallet. Please provide a password as a config param'
@@ -116,12 +129,5 @@ export default class Config implements IConfigParams {
     } else {
       this.wallet = null;
     }
-
-    this.statsDb = params.statsDb ? new StatsDB(params.statsDb) : null;
-    if (this.statsDb) {
-      this.statsDbLoaded = this.statsDb.init();
-    }
-
-    this.ledger = new Ledger(this.statsDb);
   }
 }

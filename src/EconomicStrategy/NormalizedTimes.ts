@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { EthGasStationInfo } from '@ethereum-alarm-clock/lib';
 
 export class NormalizedTimes {
@@ -10,7 +10,7 @@ export class NormalizedTimes {
     this.temporalUnit = temporalUnit;
   }
 
-  public pickGasPrice(timeLeft: BigNumber): BigNumber {
+  public pickGasPrice(timeLeft: BN): BN {
     if (timeLeft > this.safeLow) {
       return this.gasStats.safeLow;
     } else if (timeLeft > this.avg) {
@@ -24,32 +24,32 @@ export class NormalizedTimes {
     }
   }
 
-  private get safeLow(): BigNumber {
+  private get safeLow(): BN {
     return this.normalize(this.gasStats.safeLow);
   }
 
-  private get avg(): BigNumber {
+  private get avg(): BN {
     return this.normalize(this.gasStats.average);
   }
 
-  private get fast(): BigNumber {
+  private get fast(): BN {
     return this.normalize(this.gasStats.fast);
   }
 
-  private get fastest(): BigNumber {
+  private get fastest(): BN {
     return this.normalize(this.gasStats.fastest);
   }
 
-  private normalize(value: BigNumber): BigNumber {
+  private normalize(value: BN): BN {
     return this.isBlock ? this.normalizeToBlock(value) : this.normalizeToTimestamp(value);
   }
 
-  private normalizeToBlock(value: BigNumber): BigNumber {
-    return value.div(this.gasStats.blockTime).decimalPlaces(0);
+  private normalizeToBlock(value: BN): BN {
+    return value.div(this.gasStats.blockTime);
   }
 
-  private normalizeToTimestamp(value: BigNumber): BigNumber {
-    return value.multipliedBy(10);
+  private normalizeToTimestamp(value: BN): BN {
+    return value.muln(10);
   }
 
   private get isBlock() {

@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 import Cache, { ICachedTxDetails } from '../Cache';
 import { ILogger } from '../Logger';
@@ -13,12 +13,8 @@ import { TxSendStatus } from '../Enum/TxSendStatus';
 import { Util, ITransactionRequest } from '@ethereum-alarm-clock/lib';
 
 export default interface IActions {
-  claim(
-    txRequest: ITransactionRequest,
-    nextAccount: Address,
-    gasPrice: BigNumber
-  ): Promise<TxSendStatus>;
-  execute(txRequest: ITransactionRequest, gasPrice: BigNumber): Promise<TxSendStatus>;
+  claim(txRequest: ITransactionRequest, nextAccount: Address, gasPrice: BN): Promise<TxSendStatus>;
+  execute(txRequest: ITransactionRequest, gasPrice: BN): Promise<TxSendStatus>;
 }
 
 export default class Actions implements IActions {
@@ -48,7 +44,7 @@ export default class Actions implements IActions {
   public async claim(
     txRequest: ITransactionRequest,
     nextAccount: Address,
-    gasPrice: BigNumber
+    gasPrice: BN
   ): Promise<TxSendStatus> {
     const context = TxSendStatus.claim;
     //TODO: merge wallet ifs into 1 getWalletStatus or something
@@ -78,7 +74,7 @@ export default class Actions implements IActions {
     }
   }
 
-  public async execute(txRequest: ITransactionRequest, gasPrice: BigNumber): Promise<TxSendStatus> {
+  public async execute(txRequest: ITransactionRequest, gasPrice: BN): Promise<TxSendStatus> {
     const context = TxSendStatus.execute;
     if (this.wallet.hasPendingTransaction(txRequest.address, Operation.EXECUTE)) {
       return TxSendStatus.STATUS(TxSendStatus.PROGRESS, context);
@@ -143,29 +139,23 @@ export default class Actions implements IActions {
     });
   }
 
-  private getClaimingOpts(
-    txRequest: ITransactionRequest,
-    gasPrice: BigNumber
-  ): ITransactionOptions {
+  private getClaimingOpts(txRequest: ITransactionRequest, gasPrice: BN): ITransactionOptions {
     return {
       to: txRequest.address,
       value: txRequest.requiredDeposit,
-      gas: new BigNumber('120000'),
+      gas: new BN('120000'),
       gasPrice,
       data: txRequest.claimData,
       operation: Operation.CLAIM
     };
   }
 
-  private getExecutionOpts(
-    txRequest: ITransactionRequest,
-    gasPrice: BigNumber
-  ): ITransactionOptions {
+  private getExecutionOpts(txRequest: ITransactionRequest, gasPrice: BN): ITransactionOptions {
     const gas = this.util.calculateGasAmount(txRequest);
 
     return {
       to: txRequest.address,
-      value: new BigNumber(0),
+      value: new BN(0),
       gas,
       gasPrice,
       data: txRequest.executeData,

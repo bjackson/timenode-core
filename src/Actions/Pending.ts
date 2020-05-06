@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { Operation } from '../Types/Operation';
 import { ITransactionRequestPending, GasPriceUtil } from '@ethereum-alarm-clock/lib';
 import { ITxPool, ITxPoolTxDetails } from '../TxPool/ITxPool';
@@ -6,7 +6,7 @@ import { ITxPool, ITxPoolTxDetails } from '../TxPool/ITxPool';
 interface PendingOpts {
   type: Operation;
   checkGasPrice: boolean;
-  minPrice?: BigNumber;
+  minPrice?: BN;
 }
 
 const NETWORK_GAS_PRICE_RATIO = 0.3;
@@ -40,7 +40,7 @@ export class Pending {
     opts: PendingOpts
   ): Promise<boolean> {
     const currentGasPrice = await this.gasPriceUtil.networkGasPrice();
-    return Array.from(this.txPool.pool.values()).some(poolTx => {
+    return Array.from(this.txPool.pool.values()).some((poolTx) => {
       const hasCorrectAddress = poolTx.to === txRequest.address;
       const withValidGasPrice =
         !opts.checkGasPrice || this.hasValidGasPrice(currentGasPrice, poolTx, opts.minPrice);
@@ -50,16 +50,12 @@ export class Pending {
     });
   }
 
-  private hasValidGasPrice(
-    networkPrice: BigNumber,
-    transaction: ITxPoolTxDetails,
-    minPrice?: BigNumber
-  ) {
+  private hasValidGasPrice(networkPrice: BN, transaction: ITxPoolTxDetails, minPrice?: BN) {
     const hasMinPrice: boolean = !minPrice || minPrice.lte(transaction.gasPrice);
     return (
       hasMinPrice &&
       networkPrice &&
-      networkPrice.times(NETWORK_GAS_PRICE_RATIO).lte(transaction.gasPrice.valueOf())
+      networkPrice.muln(NETWORK_GAS_PRICE_RATIO).lte(transaction.gasPrice)
     );
   }
 }

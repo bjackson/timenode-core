@@ -1,10 +1,10 @@
 import { Networks } from '@ethereum-alarm-clock/lib';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { randomBytes } from 'crypto';
-import { bootstrapNodes } from 'ethereum-common';
+import Common from 'ethereumjs-common';
 import * as devp2p from 'ethereumjs-devp2p';
-import EthereumTx = require('ethereumjs-tx');
-import Web3 = require('web3');
+import { Transaction } from 'ethers/utils/transaction';
+import Web3 from 'web3';
 
 import { ITxPool, ITxPoolTxDetails } from '.';
 import { DefaultLogger, ILogger } from '../Logger';
@@ -88,7 +88,9 @@ export default class DirectTxPool implements ITxPool {
 
   private get bootNodes() {
     if (this.chainId === Networks.Mainnet) {
-      return bootstrapNodes
+      const c = new Common(this.chainId);
+      return c
+        .bootstrapNodes()
         .filter((node: any) => {
           return node.chainId === Networks.Mainnet;
         })
@@ -201,8 +203,8 @@ export default class DirectTxPool implements ITxPool {
     });
   }
 
-  private decodeOperation(tx: EthereumTx): Operation {
-    const data = tx.data.toString('hex');
+  private decodeOperation(tx: Transaction): Operation {
+    const data = tx.data;
     let result = Operation.OTHER;
 
     if (data.startsWith(DirectTxPool.ClaimData)) {
@@ -218,14 +220,14 @@ export default class DirectTxPool implements ITxPool {
     this.logger.debug(`[p2p] Received ${payload.length} transactions`);
     try {
       for (const rawTx of payload) {
-        const tx = new EthereumTx(rawTx);
+        const tx = rawTx;
         const hash = tx.hash().toString('hex');
         const operation = this.decodeOperation(tx);
         if (!this.pool.has(hash) && tx.validate(false) && operation !== Operation.OTHER) {
           this.logger.debug(`[p2p] Transaction discovered ${hash} to ${tx.to.toString('hex')}`);
 
           const to = `0x${tx.to.toString('hex')}`;
-          const gasPrice = new BigNumber(`0x${tx.gasPrice.toString('hex')}`);
+          const gasPrice = new BN(`0x${tx.gasPrice.toString('hex')}`);
 
           this.pool.set(hash, {
             to,

@@ -1,8 +1,8 @@
 import { Util } from '@ethereum-alarm-clock/lib';
-import { BigNumber } from 'bignumber.js';
+import BN from 'bn.js';
 import { assert } from 'chai';
 import * as TypeMoq from 'typemoq';
-import { Log } from 'web3/types';
+import { Log } from 'web3-core';
 
 import { CLAIMED_EVENT } from '../../src/Actions/Helpers';
 import { ITxPoolTxDetails } from '../../src/TxPool';
@@ -10,9 +10,9 @@ import TxPoolProcessor from '../../src/TxPool/TxPoolProcessor';
 import { Operation } from '../../src/Types/Operation';
 
 describe('TxPoolProcessor Unit Tests', () => {
-  function setup(tx: { to: string; gasPrice: BigNumber }) {
+  function setup(tx: { to: string; gasPrice: BN }) {
     const util = TypeMoq.Mock.ofType<Util>();
-    util.setup(u => u.getTransaction(TypeMoq.It.isAnyString())).returns(async () => tx as any);
+    util.setup((u) => u.getTransaction(TypeMoq.It.isAnyString())).returns(async () => tx as any);
     const pool = new Map<string, ITxPoolTxDetails>();
     const processor = new TxPoolProcessor(util.object);
     return { processor, pool };
@@ -20,7 +20,7 @@ describe('TxPoolProcessor Unit Tests', () => {
 
   it('registers tx in pool', async () => {
     const address = '1';
-    const gasPrice = new BigNumber(10000);
+    const gasPrice = new BN(10000);
     const transactionHash = '1';
 
     const tx = { to: address, gasPrice };
@@ -44,6 +44,6 @@ describe('TxPoolProcessor Unit Tests', () => {
     assert.isTrue(pool.has(transactionHash));
     assert.equal(res.operation, Operation.CLAIM);
     assert.equal(res.to, address);
-    assert.isTrue(res.gasPrice.isEqualTo(gasPrice));
+    assert.isTrue(res.gasPrice.eq(gasPrice));
   });
 });

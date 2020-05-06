@@ -1,7 +1,7 @@
 import { expect, assert } from 'chai';
 import { TimeNode, Config } from '../../src/index';
 import { mockConfig } from '../helpers';
-import { BigNumber } from 'bignumber.js';
+import BN from 'bn.js';
 import { TxStatus } from '../../src/Enum';
 import { Util } from '@ethereum-alarm-clock/lib';
 
@@ -94,12 +94,12 @@ describe('TimeNode Unit Tests', () => {
 
     it('returns a transaction', () => {
       const tx = {
-        bounty: new BigNumber(10e9), // 10 gwei
+        bounty: new BN(10e9), // 10 gwei
         temporalUnit: 1,
         claimedBy: config.wallet.getAddresses()[0],
         wasCalled: false,
-        windowStart: new BigNumber(10000),
-        claimWindowStart: new BigNumber(9000),
+        windowStart: new BN(10000),
+        claimWindowStart: new BN(9000),
         status: TxStatus.FreezePeriod
       };
       config.cache.set('tx', tx);
@@ -118,12 +118,7 @@ describe('TimeNode Unit Tests', () => {
     it('returns failed claims when they are present', () => {
       const failedClaimAddress = '0xe87529a6123a74320e13a6dabf3606630683c029';
 
-      config.statsDb.claimed(
-        config.wallet.getAddresses()[0],
-        failedClaimAddress,
-        new BigNumber(0),
-        false
-      );
+      config.statsDb.claimed(config.wallet.getAddresses()[0], failedClaimAddress, new BN(0), false);
 
       const txs = timenode.getUnsucessfullyClaimedTransactions()[myAccount];
       assert.equal(txs.length, 1);

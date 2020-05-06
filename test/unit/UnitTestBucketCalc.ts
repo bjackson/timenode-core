@@ -2,7 +2,7 @@ import { assert } from 'chai';
 import * as TypeMoq from 'typemoq';
 import { BucketCalc } from '../../src/Buckets';
 import { mockConfig } from '../helpers';
-import { Block } from 'web3/eth/types';
+import { Block } from 'web3-eth';
 import { Util, Constants } from '@ethereum-alarm-clock/lib';
 
 const BucketSize = Constants.BUCKET_SIZE;
@@ -12,7 +12,7 @@ describe('ButcketCalc', () => {
     it('returns current, next and after next buckets', async () => {
       const defaultBlock: Block = { number: 10000, timestamp: 10000000000 } as Block;
       const util = TypeMoq.Mock.ofType<Util>();
-      util.setup(u => u.getBlock('latest')).returns(async () => defaultBlock);
+      util.setup((u) => u.getBlock('latest')).returns(async () => defaultBlock);
 
       const config = await mockConfig();
       const requestFactory = config.eac.requestFactory();
@@ -30,11 +30,13 @@ describe('ButcketCalc', () => {
 
       assert.include(
         buckets,
-        defaultBlock.timestamp - (defaultBlock.timestamp % BucketSize.timestamp)
+        (defaultBlock.timestamp as number) -
+          ((defaultBlock.timestamp as number) % BucketSize.timestamp)
       );
 
       const expectedNextBlockInterval = defaultBlock.number + BucketSize.block;
-      const expectedNextTimestampInterval = defaultBlock.timestamp + BucketSize.timestamp;
+      const expectedNextTimestampInterval =
+        (defaultBlock.timestamp as number) + BucketSize.timestamp;
       assert.include(
         buckets,
         -1 * (expectedNextBlockInterval - (expectedNextBlockInterval % BucketSize.block))
@@ -45,7 +47,8 @@ describe('ButcketCalc', () => {
       );
 
       const expectedAfterNextBlockInterval = defaultBlock.number + 2 * BucketSize.block;
-      const expectedAfterNextTimestampInterval = defaultBlock.timestamp + 2 * BucketSize.timestamp;
+      const expectedAfterNextTimestampInterval =
+        (defaultBlock.timestamp as number) + 2 * BucketSize.timestamp;
       assert.include(
         buckets,
         -1 * (expectedAfterNextBlockInterval - (expectedAfterNextBlockInterval % BucketSize.block))

@@ -1,11 +1,11 @@
 import { EAC, Util } from '@ethereum-alarm-clock/lib';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { providerUrl } from '../helpers';
 
 const web3 = Util.getWeb3FromProviderUrl(providerUrl);
 
 export const SCHEDULED_TX_PARAMS = {
-  callValue: new BigNumber(Math.pow(10, 18))
+  callValue: new BN(10).pow(new BN(18))
 };
 
 export const scheduleTestTx = async (blocksInFuture = 270) => {
@@ -13,10 +13,10 @@ export const scheduleTestTx = async (blocksInFuture = 270) => {
 
   const { callValue } = SCHEDULED_TX_PARAMS;
 
-  const callGas = new BigNumber(1000000);
-  const gasPrice = new BigNumber(web3.utils.toWei('20', 'gwei'));
-  const fee = new BigNumber(0);
-  const bounty = new BigNumber(web3.utils.toWei('0.1', 'ether'));
+  const callGas = new BN(1000000);
+  const gasPrice = new BN(web3.utils.toWei('20', 'gwei'));
+  const fee = new BN(0);
+  const bounty = new BN(web3.utils.toWei('0.1', 'ether'));
 
   const accounts = await web3.eth.getAccounts();
   const mainAccount = accounts[0];
@@ -26,12 +26,12 @@ export const scheduleTestTx = async (blocksInFuture = 270) => {
     toAddress: mainAccount,
     callGas,
     callValue,
-    windowSize: new BigNumber(30),
-    windowStart: new BigNumber((await web3.eth.getBlockNumber()) + blocksInFuture),
+    windowSize: new BN(30),
+    windowStart: new BN((await web3.eth.getBlockNumber()) + blocksInFuture),
     gasPrice,
     fee,
     bounty,
-    requiredDeposit: new BigNumber('0'),
+    requiredDeposit: new BN('0'),
     timestampScheduling: false
   });
 

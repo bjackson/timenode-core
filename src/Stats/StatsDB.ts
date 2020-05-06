@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 enum StatsEntryAction {
   Discover,
@@ -16,22 +16,16 @@ export interface IStatsEntry {
   txAddress: string;
   timestamp: number;
   action: StatsEntryAction;
-  cost: BigNumber;
-  bounty: BigNumber;
+  cost: BN;
+  bounty: BN;
   result: StatsEntryResult;
 }
 
 export interface IStatsDB {
   init(): Promise<boolean>;
   discovered(from: string, txAddress: string): void;
-  claimed(from: string, txAddress: string, cost: BigNumber, success: boolean): void;
-  executed(
-    from: string,
-    txAddress: string,
-    cost: BigNumber,
-    bounty: BigNumber,
-    success: boolean
-  ): void;
+  claimed(from: string, txAddress: string, cost: BN, success: boolean): void;
+  executed(from: string, txAddress: string, cost: BN, bounty: BN, success: boolean): void;
   getFailedExecutions(from: string): IStatsEntry[];
   getSuccessfulExecutions(from: string): IStatsEntry[];
   getFailedClaims(from: string): IStatsEntry[];
@@ -39,8 +33,8 @@ export interface IStatsDB {
   getDiscovered(from: string): IStatsEntry[];
   clear(from: string): void;
   clearAll(): void;
-  totalCost(from: string): BigNumber;
-  totalBounty(from: string): BigNumber;
+  totalCost(from: string): BN;
+  totalBounty(from: string): BN;
 }
 
 export class StatsDB implements IStatsDB {
@@ -54,7 +48,7 @@ export class StatsDB implements IStatsDB {
 
   public init(): Promise<boolean> {
     return new Promise((resolve, reject) => {
-      this.db.loadDatabase({}, err => {
+      this.db.loadDatabase({}, (err) => {
         if (err) {
           reject(err);
         }
@@ -64,9 +58,9 @@ export class StatsDB implements IStatsDB {
         if (!collection) {
           this.db.addCollection(this.COLLECTION_NAME);
         } else {
-          collection.data.forEach(stat => {
-            stat.bounty = new BigNumber(stat.bounty);
-            stat.cost = new BigNumber(stat.cost);
+          collection.data.forEach((stat) => {
+            stat.bounty = new BN(stat.bounty);
+            stat.cost = new BN(stat.cost);
           });
         }
 
@@ -86,31 +80,25 @@ export class StatsDB implements IStatsDB {
       txAddress,
       timestamp: new Date().getTime(),
       action: StatsEntryAction.Discover,
-      cost: new BigNumber(0),
-      bounty: new BigNumber(0),
+      cost: new BN(0),
+      bounty: new BN(0),
       result: StatsEntryResult.OK
     });
   }
 
-  public claimed(from: string, txAddress: string, cost: BigNumber, success: boolean) {
+  public claimed(from: string, txAddress: string, cost: BN, success: boolean) {
     this.insert({
       from,
       txAddress,
       timestamp: new Date().getTime(),
       action: StatsEntryAction.Claim,
       cost,
-      bounty: new BigNumber(0),
+      bounty: new BN(0),
       result: success ? StatsEntryResult.OK : StatsEntryResult.NOK
     });
   }
 
-  public executed(
-    from: string,
-    txAddress: string,
-    cost: BigNumber,
-    bounty: BigNumber,
-    success: boolean
-  ) {
+  public executed(from: string, txAddress: string, cost: BN, bounty: BN, success: boolean) {
     this.insert({
       from,
       txAddress,
@@ -143,31 +131,27 @@ export class StatsDB implements IStatsDB {
   }
 
   public clear(from: string) {
-    this.collection
-      .chain()
-      .find({ from })
-      .remove();
+    this.collection.chain().find({ from }).remove();
   }
 
   public clearAll() {
     this.collection.clear();
   }
 
-  public totalCost(from: string): BigNumber {
+  public totalCost(from: string): BN {
     return this.collection
       .chain()
-      .where((item: IStatsEntry) => item.from === from && item.cost.gt(0))
+      .where((item: IStatsEntry) => item.from === from && item.cost.gtn(0))
       .mapReduce(
         (item: IStatsEntry) => item.cost,
-        (costs: BigNumber[]) => costs.reduce((sum, cost) => sum.plus(cost), new BigNumber(0))
+        (costs: BN[]) => costs.reduce((sum, cost) => sum.add(cost), new BN(0))
       );
   }
 
-  public totalBounty(from: string): BigNumber {
+  public totalBounty(from: string): BN {
     return this.select(from, StatsEntryAction.Execute, StatsEntryResult.OK).mapReduce(
       (item: IStatsEntry) => item.bounty,
-      (bounties: BigNumber[]) =>
-        bounties.reduce((sum, bounty) => sum.plus(bounty), new BigNumber(0))
+      (bounties: BN[]) => bounties.reduce((sum, bounty) => sum.add(bounty), new BN(0))
     );
   }
 

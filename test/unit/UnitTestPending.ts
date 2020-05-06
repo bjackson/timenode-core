@@ -2,22 +2,22 @@ import { assert } from 'chai';
 import * as TypeMoq from 'typemoq';
 import { ITxPool, ITxPoolTxDetails } from '../../src/TxPool';
 import { Pending } from '../../src/Actions/Pending';
-import { BigNumber } from 'bignumber.js';
+import BN from 'bn.js';
 import { Operation } from '../../src/Types/Operation';
 import { GasPriceUtil } from '@ethereum-alarm-clock/lib';
 
 describe('Pending Unit Tests', () => {
-  function createTxPoolDetails(address: string, poolOperation: Operation, gasPrice: BigNumber) {
+  function createTxPoolDetails(address: string, poolOperation: Operation, gasPrice: BN) {
     const item = TypeMoq.Mock.ofType<ITxPoolTxDetails>();
-    item.setup(i => i.to).returns(() => address);
-    item.setup(i => i.operation).returns(() => poolOperation);
-    item.setup(i => i.gasPrice).returns(() => gasPrice);
+    item.setup((i) => i.to).returns(() => address);
+    item.setup((i) => i.operation).returns(() => poolOperation);
+    item.setup((i) => i.gasPrice).returns(() => gasPrice);
     return item;
   }
 
-  function createUtils(gasPrice: BigNumber) {
+  function createUtils(gasPrice: BN) {
     const util = TypeMoq.Mock.ofType<GasPriceUtil>();
-    util.setup(u => u.networkGasPrice()).returns(async () => gasPrice);
+    util.setup((u) => u.networkGasPrice()).returns(async () => gasPrice);
     return util;
   }
 
@@ -26,14 +26,14 @@ describe('Pending Unit Tests', () => {
     pool.set(transactionHash, item);
 
     const txPool = TypeMoq.Mock.ofType<ITxPool>();
-    txPool.setup(p => p.running()).returns(() => true);
-    txPool.setup(p => p.pool).returns(() => pool);
+    txPool.setup((p) => p.running()).returns(() => true);
+    txPool.setup((p) => p.pool).returns(() => pool);
     return txPool;
   }
 
   it('should return false when pool is not running', async () => {
     const txPool = TypeMoq.Mock.ofType<ITxPool>();
-    txPool.setup(p => p.running()).returns(() => false);
+    txPool.setup((p) => p.running()).returns(() => false);
 
     const pending = new Pending(null, txPool.object);
     const result = await pending.hasPending(null, null);
@@ -43,14 +43,14 @@ describe('Pending Unit Tests', () => {
 
   it('should return false when pool is empty', async () => {
     const address = '2';
-    const gasPrice = new BigNumber(100000);
+    const gasPrice = new BN(100000);
 
     const poolOperation = Operation.CLAIM;
     const requestedOperation = poolOperation;
 
     const txPool = TypeMoq.Mock.ofType<ITxPool>();
-    txPool.setup(p => p.running()).returns(() => false);
-    txPool.setup(p => p.pool).returns(() => new Map<string, ITxPoolTxDetails>());
+    txPool.setup((p) => p.running()).returns(() => false);
+    txPool.setup((p) => p.pool).returns(() => new Map<string, ITxPoolTxDetails>());
 
     const util = createUtils(gasPrice);
 
@@ -67,7 +67,7 @@ describe('Pending Unit Tests', () => {
   it('should return true when pool contains request and gasPrice check is off', async () => {
     const transactionHash = '1';
     const address = '2';
-    const gasPrice = new BigNumber(100000);
+    const gasPrice = new BN(100000);
 
     const poolOperation = Operation.CLAIM;
     const requestedOperation = poolOperation;
@@ -89,7 +89,7 @@ describe('Pending Unit Tests', () => {
   it('should return false when pool contains CLAIM transaction but request is for EXECUTE operation', async () => {
     const transactionHash = '1';
     const address = '2';
-    const gasPrice = new BigNumber(100000);
+    const gasPrice = new BN(100000);
 
     const poolOperation = Operation.CLAIM;
     const requestedOperation = Operation.EXECUTE;
@@ -111,8 +111,8 @@ describe('Pending Unit Tests', () => {
   it('should return false when pool contains transaction but gasPrice is lower than 1/3 of network gasPrice', async () => {
     const transactionHash = '1';
     const address = '2';
-    const networkGasPrice = new BigNumber(100000);
-    const gasPrice = networkGasPrice.div(5);
+    const networkGasPrice = new BN(100000);
+    const gasPrice = networkGasPrice.divn(5);
 
     const poolOperation = Operation.CLAIM;
     const requestedOperation = poolOperation;

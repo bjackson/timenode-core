@@ -1,8 +1,8 @@
 import { assert } from 'chai';
 import { Config, Wallet } from '../../src/index';
 import { mockConfig } from '../helpers';
-import * as ethWallet from 'ethereumjs-wallet';
-import { BigNumber } from 'bignumber.js';
+import { Wallet as EthWallet } from 'ethers';
+import BN from 'bn.js';
 import { TxSendStatus } from '../../src/Enum/';
 import { isTransactionStatusSuccessful } from '../../src/Actions/Helpers';
 import { AccountState, TransactionState } from '../../src/Wallet/AccountState';
@@ -23,7 +23,7 @@ const createTestWallet = (accountState = new AccountState()) => {
 };
 
 const fundWallet = async (address: string) => {
-  await new Promise(resolve => {
+  await new Promise((resolve) => {
     config.web3.eth.sendTransaction(
       {
         from: myAccount,
@@ -44,9 +44,9 @@ const reset = async () => {
   myAccount = accounts[0];
   opts = {
     to: myAccount,
-    gas: new BigNumber('150000'),
-    gasPrice: new BigNumber(config.web3.utils.toWei('21', 'gwei')),
-    value: new BigNumber(config.web3.utils.toWei('0.01', 'ether')),
+    gas: new BN('150000'),
+    gasPrice: new BN(config.web3.utils.toWei('21', 'gwei')),
+    value: new BN(config.web3.utils.toWei('0.01', 'ether')),
     operation: Operation.CLAIM,
     data: ''
   };
@@ -65,26 +65,28 @@ describe('Wallet Unit Tests', () => {
 
   describe('add()', () => {
     it('creates a new wallet', () => {
-      const newWallet = wallet.add(ethWallet.generate());
-      assert.isTrue(wallet.isKnownAddress(newWallet.getAddressString()));
+      const newWallet = wallet.add(EthWallet.createRandom());
+      assert.isTrue(wallet.isKnownAddress(newWallet.address));
     });
 
     it('returns an existing wallet if already exists', () => {
-      const newWallet = wallet.add(ethWallet.generate());
-      assert.isTrue(wallet.isKnownAddress(newWallet.getAddressString()));
+      const newWallet = wallet.add(EthWallet.createRandom());
+      assert.isTrue(wallet.isKnownAddress(newWallet.address));
 
       const oldWallet = wallet.add(newWallet);
-      assert.equal(oldWallet.getAddressString(), newWallet.getAddressString());
+      assert.equal(oldWallet.address, newWallet.address);
     });
   });
 
   describe('encrypt()', () => {
-    it('clears all wallets', () => {
-      wallet.add(ethWallet.generate());
-      const encryptedWallets = wallet.encrypt('testpasswd123', {});
+    it('clears all wallets', async () => {
+      wallet.add(EthWallet.createRandom());
+      const encryptedWallets = await wallet.encrypt('testpasswd123', {});
 
       assert.equal(encryptedWallets.length, 1);
-      encryptedWallets.forEach(encryptedWallet => assert.property(encryptedWallet, 'crypto'));
+      encryptedWallets.forEach((encryptedWallet) =>
+        assert.property(JSON.parse(encryptedWallet), 'Crypto')
+      );
     });
   });
 
@@ -123,8 +125,8 @@ describe('Wallet Unit Tests', () => {
       wallet.create(1);
 
       const account = wallet.getAccounts()[0];
-      assert.property(account, '_privKey');
-      assert.property(account, '_pubKey');
+      assert.property(account, 'privateKey');
+      // assert.property(account, '_pubKey');
     });
   });
 
@@ -229,7 +231,7 @@ describe('Wallet Unit Tests', () => {
       let receipt = await wallet.sendFromIndex(
         idx,
         Object.assign({}, opts, {
-          gas: new BigNumber('15e64') // Setting a ridiculously high gas limit will trigger a revert
+          gas: new BN('15').mul(new BN('10').pow(new BN('64'))) // Setting a ridiculously high gas limit will trigger a revert
         })
       );
       assert.equal(receipt.status, TxSendStatus.UNKNOWN_ERROR);
@@ -237,7 +239,7 @@ describe('Wallet Unit Tests', () => {
       receipt = await wallet.sendFromIndex(idx, opts);
 
       assert.isTrue(isTransactionStatusSuccessful(receipt.receipt.status));
-    }).timeout(25000);
+    }).timeout(35000);
 
     it('returns receipt when is able to send the transaction', async () => {
       wallet.create(1);
@@ -249,7 +251,7 @@ describe('Wallet Unit Tests', () => {
       let receipt: IWalletReceipt;
 
       if (wallet.hasPendingTransaction(opts.to, opts.operation)) {
-        await new Promise(resolve => {
+        await new Promise((resolve) => {
           setTimeout(async () => {
             receipt = await wallet.sendFromIndex(idx, opts);
             resolve();
@@ -280,9 +282,9 @@ describe('Wallet Unit Tests', () => {
 
     opts = {
       to: scheduledTxAddress,
-      gas: new BigNumber('150000'),
-      gasPrice: new BigNumber(config.web3.utils.toWei('1', 'gwei')),
-      value: new BigNumber(0),
+      gas: new BN('150000'),
+      gasPrice: new BN(config.web3.utils.toWei('1', 'gwei')),
+      value: new BN(0),
       operation: Operation.CLAIM,
       data: txRequest.claimData
     };
@@ -308,9 +310,9 @@ describe('Wallet Unit Tests', () => {
 
     opts = {
       to: scheduledTxAddress,
-      gas: new BigNumber('150000'),
-      gasPrice: new BigNumber(config.web3.utils.toWei('1', 'gwei')),
-      value: new BigNumber(0),
+      gas: new BN('150000'),
+      gasPrice: new BN(config.web3.utils.toWei('1', 'gwei')),
+      value: new BN(0),
       operation: Operation.CLAIM,
       data: txRequest.claimData
     };

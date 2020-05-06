@@ -3,8 +3,8 @@ import { CLAIMED_EVENT, EXECUTED_EVENT } from '../Actions/Helpers';
 import { Operation } from '../Types/Operation';
 import { ITxPoolTxDetails } from '.';
 import { Util } from '@ethereum-alarm-clock/lib';
-import BigNumber from 'bignumber.js';
-import { Log } from 'web3/types';
+import BN from 'bn.js';
+import { Log } from 'web3-core';
 
 export default class TxPoolProcessor {
   private logger: ILogger;
@@ -62,7 +62,7 @@ export default class TxPoolProcessor {
     const tx = await this.util.getTransaction(transactionHash);
     return {
       to: tx.to,
-      gasPrice: new BigNumber(tx.gasPrice),
+      gasPrice: new BN(tx.gasPrice),
       timestamp: new Date().getTime(),
       operation
     };

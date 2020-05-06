@@ -24,7 +24,8 @@
       "ordered-imports": false,
       "await-promise": [true, "Transition"],
       "no-unsafe-finally": true,
-      "no-return-await": true
+      "no-return-await": true,
+      "no-commented-code": false
     },
     "rulesDirectory": [
       "node_modules/tslint-microsoft-contrib"

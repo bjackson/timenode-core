@@ -1,4 +1,4 @@
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 import { IntervalId } from '../Types';
 import BaseScanner from './BaseScanner';
@@ -32,7 +32,7 @@ export default class CacheScanner extends BaseScanner {
   }
 
   public getCacheTxRequests(): ITransactionRequest[] {
-    return this.config.cache.stored().map(address => this.config.eac.transactionRequest(address));
+    return this.config.cache.stored().map((address) => this.config.eac.transactionRequest(address));
   }
 
   /*
@@ -85,13 +85,10 @@ export default class CacheScanner extends BaseScanner {
     return txRequests;
   }
 
-  private claimWindowStartSort(
-    currentClaimWindowStart: BigNumber,
-    nextClaimWindowStart: BigNumber
-  ): number {
-    if (currentClaimWindowStart.isLessThan(nextClaimWindowStart)) {
+  private claimWindowStartSort(currentClaimWindowStart: BN, nextClaimWindowStart: BN): number {
+    if (currentClaimWindowStart.lt(nextClaimWindowStart)) {
       return -1;
-    } else if (currentClaimWindowStart.isGreaterThan(nextClaimWindowStart)) {
+    } else if (currentClaimWindowStart.gt(nextClaimWindowStart)) {
       return 1;
     }
     return 0;
@@ -117,13 +114,13 @@ export default class CacheScanner extends BaseScanner {
   ): number {
     const blockTime = currentTx.temporalUnit === 1 ? 1 : this.avgBlockTime;
 
-    const blockDifference = currentTx.windowStart.minus(nextTx.windowStart).abs();
-    const isInSameBlock = blockDifference.isLessThanOrEqualTo(blockTime);
+    const blockDifference = currentTx.windowStart.sub(nextTx.windowStart).abs();
+    const isInSameBlock = blockDifference.lten(blockTime);
 
     if (isInSameBlock) {
-      if (currentTx.bounty.isLessThan(nextTx.bounty)) {
+      if (currentTx.bounty.lt(nextTx.bounty)) {
         return 1;
-      } else if (currentTx.bounty.isGreaterThan(nextTx.bounty)) {
+      } else if (currentTx.bounty.gt(nextTx.bounty)) {
         return -1;
       }
     }

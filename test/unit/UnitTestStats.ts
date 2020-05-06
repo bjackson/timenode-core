@@ -1,5 +1,5 @@
-import BigNumber from 'bignumber.js';
-import * as loki from 'lokijs';
+import BN from 'bn.js';
+import loki from 'lokijs';
 import { StatsDB } from '../../src/Stats';
 import { assert } from 'chai';
 
@@ -10,14 +10,14 @@ const tx1: string = '0xaa55bf414ecef0285dcece4ddf78a0ee8beb6707';
 const tx2: string = '0x9b7b4a8fdafda1b688c22fcb6f4bc97ed29ff676';
 const tx3: string = '0x57f1b33b8b44689982ce7b3f560577e89375b2da';
 let stats: StatsDB;
-let cost: BigNumber;
-let bounty: BigNumber;
+let cost: BN;
+let bounty: BN;
 
 const reset = async () => {
   stats = new StatsDB(new loki('stats.db'));
   await stats.init();
-  cost = new BigNumber(10);
-  bounty = new BigNumber(15);
+  cost = new BN(10);
+  bounty = new BN(15);
 };
 
 beforeEach(reset);
@@ -33,7 +33,7 @@ describe('Stats Unit Tests', () => {
     it('returns 1 after failing execution', () => {
       assert.isEmpty(stats.getFailedExecutions(account1));
 
-      bounty = new BigNumber(0);
+      bounty = new BN(0);
       stats.executed(account1, tx2, cost, bounty, false);
 
       assert.equal(stats.getFailedExecutions(account1).length, 1);
@@ -116,7 +116,7 @@ describe('Stats Unit Tests', () => {
 
   describe('claimed()', () => {
     it('inserts and selects successful claims', () => {
-      const expectedBounty = new BigNumber(0);
+      const expectedBounty = new BN(0);
 
       stats.claimed(account1, tx1, cost, true);
 
@@ -130,15 +130,15 @@ describe('Stats Unit Tests', () => {
       assert.equal(successfulClaimsAccount1[0].from, account1);
       assert.equal(successfulClaimsAccount1[0].txAddress, tx1);
 
-      assert.isTrue(successfulClaimsAccount1[0].cost.isEqualTo(cost));
-      assert.isTrue(successfulClaimsAccount1[0].bounty.isEqualTo(expectedBounty));
+      assert.isTrue(successfulClaimsAccount1[0].cost.eq(cost));
+      assert.isTrue(successfulClaimsAccount1[0].bounty.eq(expectedBounty));
 
       assert.lengthOf(successfulClaimsAccount2, 1);
       assert.equal(successfulClaimsAccount2[0].from, account2);
       assert.equal(successfulClaimsAccount2[0].txAddress, tx2);
 
-      assert.isTrue(successfulClaimsAccount2[0].cost.isEqualTo(cost));
-      assert.isTrue(successfulClaimsAccount2[0].bounty.isEqualTo(expectedBounty));
+      assert.isTrue(successfulClaimsAccount2[0].cost.eq(cost));
+      assert.isTrue(successfulClaimsAccount2[0].bounty.eq(expectedBounty));
     });
 
     it('inserts and selects failed claims', () => {
@@ -167,19 +167,19 @@ describe('Stats Unit Tests', () => {
       assert.equal(successfulExecutionsAccount1[0].from, account1);
       assert.equal(successfulExecutionsAccount1[0].txAddress, tx1);
 
-      assert.isTrue(successfulExecutionsAccount1[0].cost.isEqualTo(cost));
-      assert.isTrue(successfulExecutionsAccount1[0].bounty.isEqualTo(bounty));
+      assert.isTrue(successfulExecutionsAccount1[0].cost.eq(cost));
+      assert.isTrue(successfulExecutionsAccount1[0].bounty.eq(bounty));
 
       assert.lengthOf(successfulExecutionsAccount2, 1);
       assert.equal(successfulExecutionsAccount2[0].from, account2);
       assert.equal(successfulExecutionsAccount2[0].txAddress, tx2);
 
-      assert.isTrue(successfulExecutionsAccount2[0].cost.isEqualTo(cost));
-      assert.isTrue(successfulExecutionsAccount2[0].bounty.isEqualTo(bounty));
+      assert.isTrue(successfulExecutionsAccount2[0].cost.eq(cost));
+      assert.isTrue(successfulExecutionsAccount2[0].bounty.eq(bounty));
     });
 
     it('inserts and selects failed executions', () => {
-      bounty = new BigNumber(0);
+      bounty = new BN(0);
 
       stats.executed(account1, tx1, cost, bounty, true);
       stats.executed(account2, tx2, cost, bounty, false);
@@ -278,14 +278,14 @@ describe('Stats Unit Tests', () => {
       stats.executed(account1, tx3, cost, bounty, true);
       stats.executed(account2, tx2, cost, bounty, true);
 
-      const expectedAccount1Bounty = bounty.multipliedBy(2);
+      const expectedAccount1Bounty = bounty.muln(2);
       const expectedAccount2Bounty = bounty;
 
       const totalBountiesAccount1 = stats.totalBounty(account1);
       const totalBountiesAccount2 = stats.totalBounty(account2);
 
-      assert.isTrue(totalBountiesAccount1.isEqualTo(expectedAccount1Bounty));
-      assert.isTrue(totalBountiesAccount2.isEqualTo(expectedAccount2Bounty));
+      assert.isTrue(totalBountiesAccount1.eq(expectedAccount1Bounty));
+      assert.isTrue(totalBountiesAccount2.eq(expectedAccount2Bounty));
     });
   });
 
@@ -302,14 +302,14 @@ describe('Stats Unit Tests', () => {
       stats.claimed(account1, tx1, cost, true);
       stats.claimed(account1, tx2, cost, false);
 
-      const expectedAccount1Cost = cost.multipliedBy(4); //2 executions 2claims
+      const expectedAccount1Cost = cost.muln(4); //2 executions 2claims
       const expectedAccount2Cost = cost;
 
       const totalCostAccount1 = stats.totalCost(account1);
       const totalCostAccount2 = stats.totalCost(account2);
 
-      assert.isTrue(totalCostAccount1.isEqualTo(expectedAccount1Cost));
-      assert.isTrue(totalCostAccount2.isEqualTo(expectedAccount2Cost));
+      assert.isTrue(totalCostAccount1.eq(expectedAccount1Cost));
+      assert.isTrue(totalCostAccount2.eq(expectedAccount2Cost));
     });
   });
 

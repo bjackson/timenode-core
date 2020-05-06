@@ -5,7 +5,7 @@ import CacheScanner from '../../src/Scanner/CacheScanner';
 import Cache, { ICachedTxDetails } from '../../src/Cache';
 import { TxStatus } from '../../src/Enum';
 import { assert } from 'chai';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { EAC, Util, ITransactionRequest } from '@ethereum-alarm-clock/lib';
 
 describe('Cache Scanner Unit Tests', () => {
@@ -13,7 +13,7 @@ describe('Cache Scanner Unit Tests', () => {
   const eac = {
     transactionRequest(address: string) {
       const req = TypeMoq.Mock.ofType<ITransactionRequest>();
-      req.setup(r => r.address).returns(() => address);
+      req.setup((r) => r.address).returns(() => address);
       return req.object;
     }
   };
@@ -22,58 +22,58 @@ describe('Cache Scanner Unit Tests', () => {
     const TX_DEFAULTS: ICachedTxDetails = {
       status: TxStatus.ClaimWindow,
       temporalUnit: 2,
-      windowStart: new BigNumber(10000),
-      claimWindowStart: new BigNumber(9750),
+      windowStart: new BN(10000),
+      claimWindowStart: new BN(9750),
       claimedBy: '0x0',
-      bounty: new BigNumber(10e9),
+      bounty: new BN(10e9),
       wasCalled: false
     };
 
     const transaction = TypeMoq.Mock.ofType<ICachedTxDetails>();
-    transaction.setup(tx => tx.status).returns(() => params.status || TX_DEFAULTS.status);
+    transaction.setup((tx) => tx.status).returns(() => params.status || TX_DEFAULTS.status);
     transaction
-      .setup(tx => tx.temporalUnit)
+      .setup((tx) => tx.temporalUnit)
       .returns(() => params.temporalUnit || TX_DEFAULTS.temporalUnit);
     transaction
-      .setup(tx => tx.windowStart)
+      .setup((tx) => tx.windowStart)
       .returns(() => params.windowStart || TX_DEFAULTS.windowStart);
     transaction
-      .setup(tx => tx.claimWindowStart)
+      .setup((tx) => tx.claimWindowStart)
       .returns(() => params.claimWindowStart || TX_DEFAULTS.claimWindowStart);
-    transaction.setup(tx => tx.bounty).returns(() => params.bounty || TX_DEFAULTS.bounty);
+    transaction.setup((tx) => tx.bounty).returns(() => params.bounty || TX_DEFAULTS.bounty);
     return transaction;
   };
 
   it('does not route when cache empty', async () => {
     const cache = TypeMoq.Mock.ofType<Cache<ICachedTxDetails>>();
-    cache.setup(c => c.isEmpty()).returns(() => true);
+    cache.setup((c) => c.isEmpty()).returns(() => true);
 
     const router = TypeMoq.Mock.ofType<IRouter>();
     const config = TypeMoq.Mock.ofType<Config>();
-    config.setup(c => c.cache).returns(() => cache.object);
+    config.setup((c) => c.cache).returns(() => cache.object);
 
     const scanner = new CacheScanner(config.object, router.object);
 
     await scanner.scanCache();
 
-    router.verify(r => r.route(TypeMoq.It.isAny()), TypeMoq.Times.never());
+    router.verify((r) => r.route(TypeMoq.It.isAny()), TypeMoq.Times.never());
   });
 
   it('calculates the average blocktime', async () => {
     const util = TypeMoq.Mock.ofType<Util>();
-    util.setup(u => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
+    util.setup((u) => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
 
     const transaction = TypeMoq.Mock.ofType<ICachedTxDetails>();
-    transaction.setup(tx => tx.status).returns(() => TxStatus.ClaimWindow);
+    transaction.setup((tx) => tx.status).returns(() => TxStatus.ClaimWindow);
 
     const cache = new Cache<ICachedTxDetails>();
     cache.set('1', transaction.object);
 
     const router = TypeMoq.Mock.ofType<IRouter>();
     const config = TypeMoq.Mock.ofType<Config>();
-    config.setup(c => c.cache).returns(() => cache);
-    config.setup(c => c.util).returns(() => util.object);
-    config.setup(c => c.eac).returns(() => eac as EAC);
+    config.setup((c) => c.cache).returns(() => cache);
+    config.setup((c) => c.util).returns(() => util.object);
+    config.setup((c) => c.eac).returns(() => eac as EAC);
 
     const scanner = new CacheScanner(config.object, router.object);
     assert.notExists(scanner.avgBlockTime);
@@ -97,29 +97,31 @@ describe('Cache Scanner Unit Tests', () => {
     const routed: ITransactionRequest[] = [];
 
     const router = TypeMoq.Mock.ofType<IRouter>();
-    router.setup(r => r.route(TypeMoq.It.isAny())).callback(txRequest => routed.push(txRequest));
+    router
+      .setup((r) => r.route(TypeMoq.It.isAny()))
+      .callback((txRequest) => routed.push(txRequest));
 
     const config = TypeMoq.Mock.ofType<Config>();
-    config.setup(c => c.cache).returns(() => cache);
-    config.setup(c => c.eac).returns(() => eac as EAC);
+    config.setup((c) => c.cache).returns(() => cache);
+    config.setup((c) => c.eac).returns(() => eac as EAC);
 
     const util = TypeMoq.Mock.ofType<Util>();
-    util.setup(u => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
-    config.setup(c => c.util).returns(() => util.object);
+    util.setup((u) => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
+    config.setup((c) => c.util).returns(() => util.object);
 
     const scanner = new CacheScanner(config.object, router.object);
 
     await scanner.scanCache();
 
-    router.verify(r => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
+    router.verify((r) => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
 
     assert.equal(routed.shift().address, '1');
   });
 
   it('prioritizes the tx with a higher bounty if in the same block', async () => {
-    const tx1 = mockTx({ bounty: new BigNumber(10e9) });
-    const tx2 = mockTx({ bounty: new BigNumber(10e10) });
-    const tx3 = mockTx({ bounty: new BigNumber(10e8) });
+    const tx1 = mockTx({ bounty: new BN(10e9) });
+    const tx2 = mockTx({ bounty: new BN(10e10) });
+    const tx3 = mockTx({ bounty: new BN(10e8) });
 
     const cache = new Cache<ICachedTxDetails>();
     cache.set('3', tx3.object);
@@ -129,21 +131,23 @@ describe('Cache Scanner Unit Tests', () => {
     const routed: ITransactionRequest[] = [];
 
     const router = TypeMoq.Mock.ofType<IRouter>();
-    router.setup(r => r.route(TypeMoq.It.isAny())).callback(txRequest => routed.push(txRequest));
+    router
+      .setup((r) => r.route(TypeMoq.It.isAny()))
+      .callback((txRequest) => routed.push(txRequest));
 
     const config = TypeMoq.Mock.ofType<Config>();
-    config.setup(c => c.cache).returns(() => cache);
-    config.setup(c => c.eac).returns(() => eac as EAC);
+    config.setup((c) => c.cache).returns(() => cache);
+    config.setup((c) => c.eac).returns(() => eac as EAC);
 
     const util = TypeMoq.Mock.ofType<Util>();
-    util.setup(u => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
-    config.setup(c => c.util).returns(() => util.object);
+    util.setup((u) => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
+    config.setup((c) => c.util).returns(() => util.object);
 
     const scanner = new CacheScanner(config.object, router.object);
 
     await scanner.scanCache();
 
-    router.verify(r => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
+    router.verify((r) => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
 
     assert.equal(routed.shift().address, '2');
   });
@@ -161,21 +165,23 @@ describe('Cache Scanner Unit Tests', () => {
     const routed: ITransactionRequest[] = [];
 
     const router = TypeMoq.Mock.ofType<IRouter>();
-    router.setup(r => r.route(TypeMoq.It.isAny())).callback(txRequest => routed.push(txRequest));
+    router
+      .setup((r) => r.route(TypeMoq.It.isAny()))
+      .callback((txRequest) => routed.push(txRequest));
 
     const config = TypeMoq.Mock.ofType<Config>();
-    config.setup(c => c.cache).returns(() => cache);
-    config.setup(c => c.eac).returns(() => eac as EAC);
+    config.setup((c) => c.cache).returns(() => cache);
+    config.setup((c) => c.eac).returns(() => eac as EAC);
 
     const util = TypeMoq.Mock.ofType<Util>();
-    util.setup(u => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
-    config.setup(c => c.util).returns(() => util.object);
+    util.setup((u) => u.getAverageBlockTime()).returns(() => Promise.resolve(BLOCKTIME));
+    config.setup((c) => c.util).returns(() => util.object);
 
     const scanner = new CacheScanner(config.object, router.object);
 
     await scanner.scanCache();
 
-    router.verify(r => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
+    router.verify((r) => r.route(TypeMoq.It.isAny()), TypeMoq.Times.exactly(3));
 
     assert.equal(routed.shift().address, '3');
   });

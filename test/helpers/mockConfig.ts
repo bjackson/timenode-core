@@ -1,9 +1,9 @@
-import * as loki from 'lokijs';
+import loki from 'lokijs';
 import { Config } from '../../src/index';
 import { providerUrl } from './network';
 import { DefaultLogger } from '../../src/Logger';
 
-const PRIVATE_KEY = 'fdf2e15fd858d9d81e31baa1fe76de9c7d49af0018a1322aa2b9e493b02afa26';
+const PRIVATE_KEY = 'cf5583f962959b9454f03aa0fe050bde72b081194dbce49f20a5f2cc5f991c3d';
 
 const mockConfig = async () => {
   // tslint:disable-next-line:no-hardcoded-credentials
@@ -22,6 +22,7 @@ const mockConfig = async () => {
     walletStoresAsPrivateKeys: true
   });
 
+  await config.initialize();
   await config.statsDbLoaded;
   return config;
 };

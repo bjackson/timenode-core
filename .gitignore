@@ -13,6 +13,7 @@ built/*
 dist/
 dist/*
 stats.db
+.idea/
 
 # Coverage directory
 coverage

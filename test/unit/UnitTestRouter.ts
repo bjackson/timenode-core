@@ -6,17 +6,17 @@ import { mockConfig, mockTxRequest, mockTxStatus } from '../helpers';
 import Actions from '../../src/Actions';
 import Router from '../../src/Router';
 import { TxStatus, EconomicStrategyStatus } from '../../src/Enum';
-import { V3Wallet } from '../../src/Wallet/Wallet';
+import { Wallet as EthWallet } from 'ethers';
 import { IEconomicStrategyManager } from '../../src/EconomicStrategy/EconomicStrategyManager';
 import { ICachedTxDetails } from '../../src/Cache';
-import Web3 = require('web3');
+import Web3 from 'web3';
 import {
   Util,
   GasPriceUtil,
   GasPriceEstimation,
   ITransactionRequest
 } from '@ethereum-alarm-clock/lib';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 
 const TIMESTAMP_TX = 'timestamp Tx';
 const BLOCK_TX = 'block Tx';
@@ -38,32 +38,32 @@ const createRouter = async (claimingEnabled = true) => {
     }
   } as Web3;
 
-  const v3wallet = TypeMoq.Mock.ofType<V3Wallet>();
-  v3wallet.setup(w => w.getAddressString()).returns(() => myAccount);
+  const v3wallet = TypeMoq.Mock.ofType<EthWallet>();
+  v3wallet.setup((w) => w.address).returns(() => myAccount);
 
   const wallet = TypeMoq.Mock.ofType<Wallet>();
   wallet
-    .setup(w => w.isWaitingForConfirmation(TypeMoq.It.isAnyString(), TypeMoq.It.isAny()))
+    .setup((w) => w.isWaitingForConfirmation(TypeMoq.It.isAnyString(), TypeMoq.It.isAny()))
     .returns(() => false);
-  wallet.setup(w => w.nextAccount).returns(() => v3wallet.object);
-  wallet.setup(w => w.isKnownAddress(myAccount)).returns(() => true);
-  wallet.setup(w => w.isKnownAddress(TypeMoq.It.isAnyString())).returns(() => false);
+  wallet.setup((w) => w.nextAccount).returns(() => v3wallet.object);
+  wallet.setup((w) => w.isKnownAddress(myAccount)).returns(() => true);
+  wallet.setup((w) => w.isKnownAddress(TypeMoq.It.isAnyString())).returns(() => false);
 
   const util = TypeMoq.Mock.ofType<Util>();
 
   const gasPriceUtil = TypeMoq.Mock.ofType<GasPriceUtil>();
-  gasPriceUtil.setup(u => u.networkGasPrice()).returns(async () => new BigNumber(20000));
+  gasPriceUtil.setup((u) => u.networkGasPrice()).returns(async () => new BN(20000));
   gasPriceUtil
-    .setup(u => u.getAdvancedNetworkGasPrice())
+    .setup((u) => u.getAdvancedNetworkGasPrice())
     .returns(() =>
       Promise.resolve({
-        fastest: new BigNumber(20000)
+        fastest: new BN(20000)
       } as GasPriceEstimation)
     );
 
   const economicStrategyManager = TypeMoq.Mock.ofType<IEconomicStrategyManager>();
   economicStrategyManager
-    .setup(e => e.shouldClaimTx(TypeMoq.It.isAny(), TypeMoq.It.isAny(), TypeMoq.It.isAny()))
+    .setup((e) => e.shouldClaimTx(TypeMoq.It.isAny(), TypeMoq.It.isAny(), TypeMoq.It.isAny()))
     .returns(async () => EconomicStrategyStatus.CLAIM);
 
   txTimestamp = await mockTxRequest(web3);

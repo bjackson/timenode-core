@@ -1,14 +1,14 @@
 import { ILogger, DefaultLogger } from '../Logger';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { TxStatus } from '../Enum';
 
 export interface ICachedTxDetails {
-  bounty: BigNumber;
+  bounty: BN;
   temporalUnit: number;
   claimedBy: string;
   wasCalled: boolean;
-  windowStart: BigNumber;
-  claimWindowStart: BigNumber;
+  windowStart: BN;
+  claimWindowStart: BN;
   status: TxStatus;
 }
 

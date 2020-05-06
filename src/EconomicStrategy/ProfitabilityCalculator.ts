@@ -1,5 +1,5 @@
 import { ITransactionRequest, Util, GasPriceUtil } from '@ethereum-alarm-clock/lib';
-import BigNumber from 'bignumber.js';
+import BN from 'bn.js';
 import { ILogger, DefaultLogger } from '../Logger';
 
 const CLAIMING_GAS_ESTIMATE = 100000; // Claiming gas is around 75k, we add a small surplus
@@ -15,40 +15,36 @@ export class ProfitabilityCalculator {
     this.logger = logger;
   }
 
-  public async claimingProfitability(txRequest: ITransactionRequest, claimingGasPrice: BigNumber) {
+  public async claimingProfitability(txRequest: ITransactionRequest, claimingGasPrice: BN) {
     const paymentModifier = await this.getPaymentModifier(txRequest);
-    const claimingGasCost = claimingGasPrice.times(CLAIMING_GAS_ESTIMATE);
+    const claimingGasCost = claimingGasPrice.muln(CLAIMING_GAS_ESTIMATE);
     const { average } = await this.gasPriceUtil.getAdvancedNetworkGasPrice();
     const executionSubsidy = this.calculateExecutionSubsidy(txRequest, average);
 
     const reward = txRequest.bounty
-      .times(paymentModifier)
-      .minus(claimingGasCost)
-      .minus(executionSubsidy);
+      .mul(paymentModifier)
+      .divn(100)
+      .sub(claimingGasCost)
+      .sub(executionSubsidy);
 
     this.logger.debug(
-      `claimingProfitability: paymentModifier=${paymentModifier} targetGasPrice=${claimingGasPrice} bounty=${
-        txRequest.bounty
-      } reward=${reward}`,
+      `claimingProfitability: paymentModifier=${paymentModifier} targetGasPrice=${claimingGasPrice} bounty=${txRequest.bounty} reward=${reward}`,
       txRequest.address
     );
 
     return reward;
   }
 
-  public async executionProfitability(
-    txRequest: ITransactionRequest,
-    executionGasPrice: BigNumber
-  ) {
+  public async executionProfitability(txRequest: ITransactionRequest, executionGasPrice: BN) {
     const paymentModifier = await this.getPaymentModifier(txRequest);
     const executionSubsidy = this.calculateExecutionSubsidy(txRequest, executionGasPrice);
     const { requiredDeposit, bounty } = txRequest;
 
     const reward = bounty
-      .times(paymentModifier)
-      .minus(executionSubsidy)
-      .plus(txRequest.isClaimed ? requiredDeposit : 0)
-      .decimalPlaces(0);
+      .mul(paymentModifier)
+      .divn(100)
+      .sub(executionSubsidy)
+      .add(new BN(txRequest.isClaimed ? requiredDeposit : 0));
 
     this.logger.debug(
       `executionProfitability: executionSubsidy=${executionSubsidy} for executionGasPrice=${executionGasPrice} returns expectedReward=${reward}`,
@@ -58,18 +54,18 @@ export class ProfitabilityCalculator {
     return reward;
   }
 
-  private calculateExecutionSubsidy(txRequest: ITransactionRequest, gasPrice: BigNumber) {
-    let executionSubsidy = new BigNumber(0);
+  private calculateExecutionSubsidy(txRequest: ITransactionRequest, gasPrice: BN) {
+    let executionSubsidy = new BN(0);
 
     if (txRequest.gasPrice < gasPrice) {
       const executionGasAmount = this.util.calculateGasAmount(txRequest);
-      executionSubsidy = gasPrice.minus(txRequest.gasPrice).times(executionGasAmount);
+      executionSubsidy = gasPrice.sub(txRequest.gasPrice).mul(executionGasAmount);
     }
 
     return executionSubsidy;
   }
 
-  private async getPaymentModifier(txRequest: ITransactionRequest) {
-    return (await txRequest.claimPaymentModifier()).dividedBy(100);
+  private async getPaymentModifier(txRequest: ITransactionRequest): Promise<BN> {
+    return txRequest.claimPaymentModifier();
   }
 }
